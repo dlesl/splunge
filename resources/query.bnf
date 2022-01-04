@@ -1,0 +1,72 @@
+<commands> = command (<ws>? <'|'> <ws>? command)*;
+command = ('search' <ws> search-expressions)
+        | ('eval' <ws> eval-assignment)
+        | ('rex' <ws> (<'field'> <equals> value <ws>)? rex-pattern)
+        | ('stats' <ws> <'count'> <ws> <'by'> <ws> field-list)
+        | ('join' <ws> field <ws> <'['> subquery <']'> (<ws> join-opt)*)
+        | ('transaction' <ws> field (<ws> transaction-opt)*)
+        | ('fields' <ws> (('+' | '-') <ws>)? field-list)
+        | ('table' <ws> field-list)
+        | ('sort' <ws> sort-by (<','> <ws> sort-by)*)
+        | ('fillnull' <ws> ('value' <equals> literal <ws>)? field-list)
+        | ('dedup' <ws> (number <ws>)? field-list);
+
+(* search *)
+<search-expressions> = search-expression (<ws> search-expression)*;
+search-expression = value | comparison-expression | or-search-expression | in-search-expression | not-search-expression | bracket-search-expression;
+or-search-expression = search-expression <ws> <'OR'> <ws> search-expression;
+not-search-expression = <'NOT'> <ws> search-expression;
+in-search-expression = field <ws> <'IN'> <ws> <'('> <ws>? value? ((<ws>|<comma>) value)* <ws>? <')'>;
+bracket-search-expression = <'('> <ws>? search-expression (<ws> search-expression)* <ws>? <')'>;
+comparison-expression = field <equals> value;
+
+(* eval *)
+<eval-assignment> = field <equals> eval-expression;
+<eval-expression> = literal
+                  | eval-rhs-field
+                  | ('if' <ob> eval-expression <comma> eval-expression <comma> eval-expression <cb>)
+                  | ('null' <ob> <cb>)
+                  | ('coalesce' <ob> eval-expression (<comma> eval-expression)* <cb>)
+                  | eval-operator
+                  | eval-like;
+literal = number | double-quoted;
+eval-rhs-field = (!#'[0-9]+[^a-zA-Z\-_0-9]' #'[a-zA-Z\-_0-9]+') | single-quoted;
+eval-operator = eval-expression <ws>? ('.'|'+'|'-'|'*'|'/'|'%'|'='|'=='|'>'|'<') <ws>? eval-expression;
+eval-like = eval-expression <ws> <'LIKE'> <ws> literal;
+
+(* rex *)
+rex-pattern = double-quoted;
+
+(* join *)
+join-opt = ('type' <equals> ('inner' | 'outer' | 'left'))
+         | ('max' <equals> number)
+         | ('overwrite' <equals> boolean);
+
+(* transaction *)
+transaction-opt = (('startswith' | 'endswith') <equals> (value | bracket-search-expression))
+                | ('keeporphans' <equals> boolean)
+                | ('maxevents' <equals> number)
+                | ('maxspan' <equals> duration);
+duration = number ('ms'|'s'|'m'|'h'|'d');
+
+(* sort *)
+sort-by = ((('+' | '-') <ws>?)? field)
+
+(* helpers *)
+ws = #'\s+';
+subquery = commands;
+equals = ws? <'='> ws?;
+comma = ws? <','> ws?;
+ob = ws? '(' ws?;
+cb = ws? ')' ws?;
+field-list = field ((<ws>|<comma>) field)*;
+field = (!#'[0-9]+' identifier) | double-quoted;
+value = identifier | double-quoted;
+number = #'[0-9]+';
+boolean = 'true' | 'false';
+<identifier> = #'(?!OR|IN|NOT)[^,+\-()\[\]=\"|\s]+';
+
+(* https://gist.github.com/stathissideris/8969123 *)
+<double-quoted> = <'\"'> (#'[^"\\]+' | escaped-char)* <'\"'>;
+<escaped-char> = #'\\.';
+<single-quoted> = <"'"> #"[^']+" <"'">;

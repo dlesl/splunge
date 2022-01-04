@@ -1,0 +1,4 @@
+<path> = (path-key | path-index) (<'.'> (path-key | path-index))*;
+<path-key> = #'[^.{}]+';
+<path-index> = path-key <'{'> number <'}'>;
+number = #'[0-9]+';
