@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - master
+  release:
+    types:
+      - created
 
 jobs:
   jar:
@@ -41,6 +44,16 @@ jobs:
           name: jar
           path: target/splunge-standalone.jar
 
+      - uses: actions/upload-release-asset@v1
+        if: ${{ github.event_name == 'release' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./target/splunge-standalone.jar
+          asset_name: splunge.jar
+          asset_content_type: application/java-archive
+
   linux:
     runs-on: ubuntu-18.04
     needs: [jar]
@@ -69,10 +82,19 @@ jobs:
         run: |
           make target/splunge
 
-      - uses: actions/upload-artifact@v2
+      - name: Build zip
+        run: |
+          zip -j splunge.zip target/splunge
+
+      - uses: actions/upload-release-asset@v1
+        if: ${{ github.event_name == 'release' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          name: splunge-linux-amd64
-          path: target/splunge
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./splunge.zip
+          asset_name: splunge-linux-amd64.zip
+          asset_content_type: application/zip
 
   mac:
     runs-on: macos-10.15
@@ -102,10 +124,19 @@ jobs:
         run: |
           make target/splunge
 
-      - uses: actions/upload-artifact@v2
+      - name: Build zip
+        run: |
+          zip -j splunge.zip target/splunge
+
+      - uses: actions/upload-release-asset@v1
+        if: ${{ github.event_name == 'release' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          name: splunge-macos-amd64
-          path: target/splunge
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./splunge.zip
+          asset_name: splunge-macos-amd64.zip
+          asset_content_type: application/zip
 
   windows:
     runs-on: windows-2019
@@ -138,7 +169,16 @@ jobs:
         run: |
           make target/splunge
 
-      - uses: actions/upload-artifact@v2
+      - name: Build zip
+        run: |
+          Compress-Archive -Path target\splunge.exe -DestinationPath splunge.zip
+
+      - uses: actions/upload-release-asset@v1
+        if: ${{ github.event_name == 'release' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          name: splunge-windows-amd64
-          path: target/splunge.exe
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./splunge.zip
+          asset_name: splunge-windows-amd64.zip
+          asset_content_type: application/zip
