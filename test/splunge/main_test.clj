@@ -33,6 +33,23 @@
             {"id" 2 "count" 1}]
            (->> (parse&run "stats count by id" input)
                 :records
+                (map #(dissoc % "_raw")))))
+
+    (is (= [{"id" 1 "stuff" 2 "count" 1}
+            {"id" 1 "stuff" 4 "count" 1}
+            {"id" 2 "stuff" 3 "count" 1}]
+           (->> (parse&run "stats count by id, stuff" input)
+                :records
+                (map #(dissoc % "_raw")))))
+
+    (is (= [{"count" 3}]
+           (->> (parse&run "stats count" input)
+                :records
+                (map #(dissoc % "_raw")))))
+
+    (is (= [{"count" 4 "avg" 2.5}]
+           (->> (parse&run "stats count, avg(second1)" input2)
+                :records
                 (map #(dissoc % "_raw"))))))
 
   (testing "table"

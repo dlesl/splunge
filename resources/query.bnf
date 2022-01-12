@@ -2,7 +2,7 @@
 command = ('search' <ws> search-expressions)
         | ('eval' <ws> eval-assignment)
         | ('rex' <ws> (<'field'> <equals> value <ws>)? rex-pattern)
-        | ('stats' <ws> <'count'> <ws> <'by'> <ws> field-list)
+        | ('stats' <ws> stats-fn-list (<ws> <'by'> <ws> field-list)?)
         | ('join' <ws> field <ws> <'['> subquery <']'> (<ws> join-opt)*)
         | ('transaction' <ws> field (<ws> transaction-opt)*)
         | ('fields' <ws> (('+' | '-') <ws>)? field-list)
@@ -36,6 +36,11 @@ eval-like = eval-expression <ws> <'LIKE'> <ws> literal;
 
 (* rex *)
 rex-pattern = double-quoted;
+
+(* stats *)
+stats-fn-list = stats-fn ((<ws>|<comma>) stats-fn)*;
+stats-fn = 'count'
+         | ('avg' <ob> field <cb>);
 
 (* join *)
 join-opt = ('type' <equals> ('inner' | 'outer' | 'left'))

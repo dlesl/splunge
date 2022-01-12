@@ -101,28 +101,33 @@
               (constantly 0)))]
     (xforms/sort (cmp sort-bys))))
 
-(defn stats [paths]
-  (let [paths (mapv second paths)]
-    (fn [rf]
-      (let [m (java.util.HashMap.)]
-        (fn
-          ([] (rf))
-          ([result]
-           (let [paths (map path->string paths)
-                 rows (map (fn [[k v]] (assoc (zipmap paths k) "count" v)) m)
-                 result (unreduced (reduce rf result rows))]
-             (rf result)))
-          ([result input]
-           (let [vs (mapv #(get-in input %) paths)]
-             (.put m vs (inc (.getOrDefault m vs 0))))
-           result))))))
-
 (defn ->number [v]
   (cond
     (number? v) v
     (string? v) (or (parse-long v) (parse-double v))
     (instance? Instant v) (.toEpochMilli ^Instant v)
     :else nil))
+
+(defn stats [fns paths]
+  (let [paths (mapv second paths)
+        kfn #(mapv (fn [path] (get-in % path)) paths)
+        path-names (mapv path->string paths)
+        xfs (->> fns
+                 (map (fn [f] (match f
+                                     [:stats-fn "count"]
+                                     {"count" xforms/count}
+
+                                     [:stats-fn number-fn [:path path]]
+                                     {number-fn (comp (map #(->number (get-in % path)))
+                                                      (case number-fn
+                                                        "avg" xforms/avg
+                                                        "max" xforms/maximum
+                                                        "min" xforms/minimum))})))
+                 (apply merge))]
+    (comp
+     (xforms/by-key kfn (xforms/transjuxt xfs))
+     (map (fn [[ks v]]
+            (merge (zipmap path-names ks) v))))))
 
 (defn maybe-maths [op left right]
   (when-some [left (->number left)]
@@ -349,8 +354,11 @@
               [[:command "search" & args]]
               (search args)
 
-              [[:command "stats" [:field-list & paths]]]
-              (stats paths)
+              [[:command "stats" [:stats-fn-list & stats-fns] [:field-list & paths]]]
+              (stats stats-fns paths)
+
+              [[:command "stats" [:stats-fn-list & stats-fns]]]
+              (stats stats-fns [])
 
               [[:command "rex" [:rex-pattern pat]]]
               (rex pat)
