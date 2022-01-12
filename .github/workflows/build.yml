@@ -51,7 +51,7 @@ jobs:
         with:
           upload_url: ${{ github.event.release.upload_url }}
           asset_path: ./target/splunge-standalone.jar
-          asset_name: splunge.jar
+          asset_name: splunge-standalone.jar
           asset_content_type: application/java-archive
 
   linux:
