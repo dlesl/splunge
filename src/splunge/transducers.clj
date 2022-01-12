@@ -67,21 +67,6 @@
        (map filter)
        (reduce comp)))
 
-(defn- path->string [path]
-  (let [sb (StringBuilder.)]
-    (doseq [el path]
-      (cond
-        (string? el) (doto sb
-                       (.append ".")
-                       (.append el))
-        (integer? el) (doto sb
-                        (.append "{")
-                        (.append el)
-                        (.append "}"))))
-    (if (string? (first path))
-      (.substring sb 1)
-      (str sb))))
-
 (defn _sort [sort-bys]
   (letfn [(cmp [sort-bys]
             (if-some [[sort-by & sort-bys] (seq sort-bys)]
@@ -108,10 +93,19 @@
     (instance? Instant v) (.toEpochMilli ^Instant v)
     :else nil))
 
+(defn- zipmap-in [paths vals]
+  (loop [res {}
+         ks (seq paths)
+         vs (seq vals)]
+    (if (and ks vs)
+      (recur (assoc-in res (first ks) (first vs))
+             (next ks)
+             (next vs))
+      res)))
+
 (defn stats [fns paths]
   (let [paths (mapv second paths)
         kfn #(mapv (fn [path] (get-in % path)) paths)
-        path-names (mapv path->string paths)
         xfs (->> fns
                  (map (fn [f] (match f
                                      [:stats-fn "count"]
@@ -127,7 +121,7 @@
     (comp
      (xforms/by-key kfn (xforms/transjuxt xfs))
      (map (fn [[ks v]]
-            (merge (zipmap path-names ks) v))))))
+            (merge (zipmap-in paths ks) v))))))
 
 (defn maybe-maths [op left right]
   (when-some [left (->number left)]

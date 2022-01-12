@@ -45,6 +45,32 @@
     raw
     (json/write-value-as-string r)))
 
+(defn- path->string [path]
+  (let [sb (StringBuilder.)]
+    (doseq [el path]
+      (cond
+        (string? el) (doto sb
+                       (.append ".")
+                       (.append el))
+        (integer? el) (doto sb
+                        (.append "{")
+                        (.append el)
+                        (.append "}"))))
+    (if (string? (first path))
+      (.substring sb 1)
+      (str sb))))
+
+(defn flatten-keys
+  ([m]
+   (flatten-keys m []))
+  ([m path]
+   (reduce-kv (fn [acc k v]
+                (cond
+                  (or (string? v) (number? v)) (assoc acc (path->string (conj path k)) v)
+                  (instance? java.util.Map v) (merge acc (flatten-keys v (conj path k)))
+                  :else acc))
+              {} m)))
+
 (defn run-cli [{:keys [query json timestamps input]}]
   (let [input-stream (if input
                        (io/reader input)
@@ -55,7 +81,7 @@
     (case (or force-format format)
       :json (doseq [r records]
               (println (format-record r)))
-      :table (print-table records)))
+      :table (print-table (map flatten-keys records))))
   (shutdown-agents))
 
 (def cli-options
